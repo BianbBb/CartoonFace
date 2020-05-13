@@ -7,3 +7,11 @@
 
 
 '''
+
+import logging
+
+
+LOG_FORMAT = "%(asctime)s[%(levelname)s]     %(message)s "
+DATE_FORMAT = '%m-%d %H:%M:%S'
+logging.basicConfig(level=logging.DEBUG,format=LOG_FORMAT, datefmt=DATE_FORMAT, )
+logging.debug('----------  START  ---------')
