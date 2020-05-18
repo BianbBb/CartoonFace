@@ -159,13 +159,14 @@ class DetTrainer(BaseTrainer):
                 self.BEST_VAL_LOSS = np.mean(self.VAL_LOSS)
                 self.save_model()
             else:
-                if np.mean(self.VAL_LOSS) < self.BEST_VAL_LOSS:
+                if np.mean(self.VAL_LOSS) <= self.BEST_VAL_LOSS:
                     self.BEST_VAL_LOSS = np.mean(self.VAL_LOSS)
                     self.save_model()
 
+
     def save_model(self):
         pkl_save_name = 'centernet-{}-{:.3f}.pkl'.format(
-            time.strftime("%m%d-%H%M", time.localtime()),self.BEST_VAL_LOSS)
+            time.strftime("%m%d-%H%M", time.localtime()), self.BEST_VAL_LOSS)
         pkl_save_path = os.path.join(self.exp_dir, pkl_save_name)
         torch.save(self.net.state_dict(), pkl_save_path)
 

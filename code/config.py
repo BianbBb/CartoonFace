@@ -62,7 +62,7 @@ class Detection_Parameter():
 
         # Network Setting
         self.gpu_ids = [0, 1, 2, 3]
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Optimizer
         self.optimizer = 'SGD'
@@ -77,8 +77,8 @@ class Detection_Parameter():
 
 
         # Train
-        self.train_num = 80000  # 在训练数据中选取前80000个作为训练集，其余为验证集
-        self.BATCH_SIZE = 16  # 10,16,20...
+        self.train_num = 40000  # 在训练数据中选取前40000个作为训练集，其余为验证集
+        self.BATCH_SIZE = 4  # 10,16,20...
         self.EPOCH = 200
         self.log_step = 20  # 每隔20step，输出一次训练信息
         self.SEED = 2020

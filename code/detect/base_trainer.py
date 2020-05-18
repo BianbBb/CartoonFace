@@ -12,8 +12,7 @@ class BaseTrainer(object):
         self.device = self.para.device
 
         torch.cuda.manual_seed(self.para.SEED)
-        # os.environ["CUDA_VISIBLE_DEVICES"] = self.device
-        torch.cuda.set_device(self.device)
+        # torch.cuda.set_device(self.device)
         torch.backends.cudnn.benchmark = True
 
         self.exp_dir = para.exp_dir
