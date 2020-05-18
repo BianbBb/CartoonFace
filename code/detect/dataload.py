@@ -19,7 +19,7 @@ from utils.image import draw_dense_reg
 # 适用于CenterNet
 
 class DetDataset(DATA.Dataset):
-    def __init__(self, para, ):
+    def __init__(self, para, flag='train', train_num=None, ):
         '''
 
         # 读取csv文件
@@ -63,6 +63,23 @@ class DetDataset(DATA.Dataset):
                 # cv2.imshow('img', img)
                 # cv2.imshow('clip', clip)
                 # cv2.waitKey(0)
+        f.close()
+
+        if train_num:
+            if flag is 'train':
+                train_box_dict = {}
+                for i, (k, v) in enumerate(self.box_dict.items()):
+                    if i == train_num:
+                        break
+                    train_box_dict[k] = v
+                self.box_dict = train_box_dict
+            else:
+                test_box_dict = {}
+                for i, (k, v) in enumerate(self.box_dict.items()):
+                    if i < train_num:
+                        continue
+                    test_box_dict[k] = v
+                self.box_dict = test_box_dict
 
     def __getitem__(self, index):
         file_name = list(self.box_dict.keys())[index]
@@ -196,18 +213,14 @@ class DetDataset(DATA.Dataset):
 
 if __name__ == '__main__':
     import config as cfg
-    import logging
-    LOG_FORMAT = "%(asctime)s[%(levelname)s]     %(message)s "
-    DATE_FORMAT = '%m-%d %H:%M:%S'
-    logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT, )
-
-    parameter = cfg.Detection_Parameter()
-    dataset = DetDataset(parameter)
-    train_loader = DATA.DataLoader(dataset=dataset, batch_size=1, shuffle=False)
+    para = cfg.Detection_Parameter()
+    logger = para.logger
+    dataset = DetDataset(para,flag='train',train_num=6)
+    #dataset = DetDataset(para, flag='test', train_num=6)
+    train_loader = DATA.DataLoader(dataset=dataset, batch_size=2, shuffle=False)
     for step, data in enumerate(train_loader):
-        logging.debug(step)
-
-        print(data['reg_mask'])
+        logger.debug(step)
+        logger.debug(data['reg_mask'])
         ind = (data['ind']).numpy()[0]
         wh = (data['wh']).numpy()[0]
 

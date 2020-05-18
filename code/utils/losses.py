@@ -1,7 +1,11 @@
 import torch.nn.functional as F
 from typing import Tuple
+from torch import Tensor
 import torch
-from torch import nn, Tensor
+import torch.nn as nn
+from util import _transpose_and_gather_feat
+import torch.nn.functional as F
+
 
 # nn.TripletMarginLoss()
 class TripletLoss(nn.Module):

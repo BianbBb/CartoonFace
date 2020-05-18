@@ -236,22 +236,23 @@ class exkp(nn.Module):
             make_cnv_layer(curr_dim, cnv_dim) for _ in range(nstack)
         ])
 
-        self.inters = nn.ModuleList([
-            make_inter_layer(curr_dim) for _ in range(nstack - 1)
-        ])
-
-        self.inters_ = nn.ModuleList([
-            nn.Sequential(
-                nn.Conv2d(curr_dim, curr_dim, (1, 1), bias=False),
-                nn.BatchNorm2d(curr_dim)
-            ) for _ in range(nstack - 1)
-        ])
-        self.cnvs_   = nn.ModuleList([
-            nn.Sequential(
-                nn.Conv2d(cnv_dim, curr_dim, (1, 1), bias=False),
-                nn.BatchNorm2d(curr_dim)
-            ) for _ in range(nstack - 1)
-        ])
+        # 在nstack>1时，连接使用
+        # self.inters = nn.ModuleList([
+        #     make_inter_layer(curr_dim) for _ in range(nstack - 1)
+        # ])
+        #
+        # self.inters_ = nn.ModuleList([
+        #     nn.Sequential(
+        #         nn.Conv2d(curr_dim, curr_dim, (1, 1), bias=False),
+        #         nn.BatchNorm2d(curr_dim)
+        #     ) for _ in range(nstack - 1)
+        # ])
+        # self.cnvs_   = nn.ModuleList([
+        #     nn.Sequential(
+        #         nn.Conv2d(cnv_dim, curr_dim, (1, 1), bias=False),
+        #         nn.BatchNorm2d(curr_dim)
+        #     ) for _ in range(nstack - 1)
+        # ])
 
         ## keypoint heatmaps
         for head in heads.keys():
@@ -263,6 +264,7 @@ class exkp(nn.Module):
                 self.__setattr__(head, module)
                 for heat in self.__getattr__(head):
                     heat[-1].bias.data.fill_(-2.19)
+
             else:
                 module = nn.ModuleList([
                     make_regr_layer(
@@ -292,10 +294,10 @@ class exkp(nn.Module):
                 out[head] = y
 
             outs.append(out)
-            if ind < self.nstack - 1:
-                inter = self.inters_[ind](inter) + self.cnvs_[ind](cnv)
-                inter = self.relu(inter)
-                inter = self.inters[ind](inter)
+            # if ind < self.nstack - 1:
+            #     inter = self.inters_[ind](inter) + self.cnvs_[ind](cnv)
+            #     inter = self.relu(inter)
+            #     inter = self.inters[ind](inter)
 
         return outs
 
@@ -307,10 +309,12 @@ def make_hg_layer(kernel, dim0, dim1, mod, layer=convolution, **kwargs):
 
 
 class HourglassNet(exkp):
-    def __init__(self, heads, num_stacks=2):
-        n       = 4 # n 为 内部结构的个数 # input size/r/(n+1) 为整数   如448/4/5 =7 所以n最大为4 （r为pre中的下采样率）
+    def __init__(self, heads, num_stacks=1): # num_stacks: 沙漏结构数量
+        n = 4  # TODO：尝试2,3,4 哪种设置更适合本数据集
+        # n 为 内部结构的个数 # input size/r/(n+1) 为整数   如448/4/5 =7 所以n最大为4 （r为pre中的下采样率）
+
         # dims    = [256, 256, 384, 384, 384, 512]
-        dims = [256, 256, 256, 512,1024] # len(dim) = n+1
+        dims = [256, 256,256, 512, 1024] # len(dim) = n+1
         modules = [2, 2, 2, 2, 2, 4]
 
         super(HourglassNet, self).__init__(
@@ -327,12 +331,11 @@ def get_large_hourglass_net(num_layers, heads, head_conv):
     return model
 
 if __name__ == '__main__':
-    import logging
     from torchsummary import summary
 
     heads = {'hm': 1, 'wh': 2}
     # hm:类别数
     # wh:长、宽
     net = HourglassNet(heads,1 )
-    summary(net,(3,256,256))
+    summary(net, (3,64,64), device='cpu')
     print(net)
