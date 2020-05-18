@@ -1,6 +1,6 @@
 import torch
 import os
-
+from torch import nn
 
 class BaseTrainer(object):
     def __init__(self, para, net, optimizer=None, loss=None,):
@@ -12,6 +12,7 @@ class BaseTrainer(object):
         self.device = self.para.device
 
         torch.cuda.manual_seed(self.para.SEED)
+        # os.environ["CUDA_VISIBLE_DEVICES"] = self.device
         torch.cuda.set_device(self.device)
         torch.backends.cudnn.benchmark = True
 
@@ -19,10 +20,12 @@ class BaseTrainer(object):
         self.exp_name = para.exp_name
         self.exp_path = os.path.join(self.exp_dir, self.exp_name)
 
-        if self.para.resume: # 从文件中读取模型参数
-            self.load_weight()
-        self.net.to(self.devide)
+        if len(self.para.gpu_ids) > 0:
+            self.net = nn.DataParallel(net,device_ids=self.para.gpu_ids)
+        self.net.to(self.device)
 
+        if self.para.resume:  # 从文件中读取模型参数
+            self.load_weight()
         self.optimizer_name = optimizer
         self.set_optimizer()
 

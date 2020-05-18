@@ -12,6 +12,8 @@ from utils.gen_oracle_map import gen_oracle_map
 from base_trainer import BaseTrainer
 from utils.util import AverageMeter
 
+
+
 class ModelWithLoss(torch.nn.Module):
     def __init__(self, model, loss):
         super(ModelWithLoss, self).__init__()
@@ -20,6 +22,7 @@ class ModelWithLoss(torch.nn.Module):
 
     def forward(self, batch):
         outputs = self.model(batch['input'])
+        # input输入model，得到输出：hm和wh
         loss, loss_stats = self.loss(outputs, batch)
         return outputs[-1], loss, loss_stats
 
@@ -30,47 +33,42 @@ class CtdetLoss(torch.nn.Module):
         self.crit_reg = RegL1Loss() if para.reg_loss == 'l1' else \
             RegLoss() if para.reg_loss == 'sl1' else None
         self.crit_wh = self.crit_reg  # 或NormRegL1Loss()
-
         self.para = para
 
     def forward(self, outputs, batch):
-        para = self.para
         num_stacks = 1    # num_stacks = 1 沙漏结构数量，本网络设置为1
         hm_loss, wh_loss, off_loss = 0, 0, 0
         for s in range(num_stacks):
             output = outputs[s]
             output['hm'] = _sigmoid(output['hm'])
-
-            if para.eval_oracle_hm:
-                output['hm'] = batch['hm']
-            if para.eval_oracle_wh:
-                output['wh'] = torch.from_numpy(gen_oracle_map(
-                    batch['wh'].detach().cpu().numpy(),
-                    batch['ind'].detach().cpu().numpy(),
-                    output['wh'].shape[3], output['wh'].shape[2])).to(para.device)
+            # if para.eval_oracle_hm:
+            #     output['hm'] = batch['hm']
+            # if para.eval_oracle_wh:
+            #     output['wh'] = torch.from_numpy(gen_oracle_map(
+            #         batch['wh'].detach().cpu().numpy(),
+            #         batch['ind'].detach().cpu().numpy(),
+            #         output['wh'].shape[3], output['wh'].shape[2])).to(para.device)
             # if opt.eval_oracle_offset:
             #     output['reg'] = torch.from_numpy(gen_oracle_map(
             #         batch['reg'].detach().cpu().numpy(),
             #         batch['ind'].detach().cpu().numpy(),
             #         output['reg'].shape[3], output['reg'].shape[2])).to(opt.device)
-
-            hm_loss += self.crit(output['hm'], batch['hm']) / num_stacks   ## heatmap loss
+            hm_loss = hm_loss + self.crit(output['hm'], batch['hm']) / num_stacks   ## heatmap loss
 
             ## wh loss
-            wh_loss += self.crit_reg( output['wh'], batch['reg_mask'], batch['ind'], batch['wh']) / num_stacks
-
+            wh_loss = wh_loss + self.crit_reg(output['wh'], batch['reg_mask'], batch['ind'], batch['wh']) / num_stacks
 
             # if opt.reg_offset and opt.off_weight > 0: ## offset loss
             #     off_loss += self.crit_reg(output['reg'], batch['reg_mask'],
             #                               batch['ind'], batch['reg']) / opt.num_stacks
-
         # loss = opt.hm_weight * hm_loss + opt.wh_weight * wh_loss + \
         #        opt.off_weight * off_loss
-        loss = 1 * hm_loss + 0.1 * wh_loss
+        loss = 1.0 * hm_loss + 0.1 * wh_loss
 
         loss_stats = {'loss': loss, 'hm_loss': hm_loss,
                       'wh_loss': wh_loss, 'off_loss': off_loss}
         return loss, loss_stats
+
 
 class DetTrainer(BaseTrainer):
     def __init__(self, para, net, train_loader, val_loader=None, optimizer=None):
@@ -149,16 +147,21 @@ class DetTrainer(BaseTrainer):
 
     def run(self):
         for epoch in range(self.para.EPOCH):
+
             torch.cuda.empty_cache()
+            self.logger.debug('-------------------------- train epoch ------------------------')
             self.train()
+            self.logger.debug('--------------------------- val epoch -------------------------')
             self.val()
 
-        if self.BEST_VAL_LOSS is None:
-            self.BEST_VAL_LOSS = np.mean(self.VAL_LOSS)
-            self.save_model()
-        else:
-            if np.mean(self.VAL_LOSS) < self.BEST_VAL_LOSS:
+            self.logger.info('|Val Loss: {:.4f}'.format(np.mean(self.VAL_LOSS)))
+            if self.BEST_VAL_LOSS is None:
+                self.BEST_VAL_LOSS = np.mean(self.VAL_LOSS)
                 self.save_model()
+            else:
+                if np.mean(self.VAL_LOSS) < self.BEST_VAL_LOSS:
+                    self.BEST_VAL_LOSS = np.mean(self.VAL_LOSS)
+                    self.save_model()
 
     def save_model(self):
         pkl_save_name = 'centernet-{}-{:.3f}.pkl'.format(
@@ -172,35 +175,35 @@ class DetTrainer(BaseTrainer):
     def val(self):
         return self.run_epoch(self.val_loader, is_train=False)
         # self.BEST_VAL_LOSS = None
-        self.net.eval()
-        net.eval()
-
-        VAL_LOSS = []
-        for step, (images, instances) in enumerate(val_loader):
-            torch.cuda.empty_cache()
-            with torch.no_grad():
-                anchor = images[0]
-                pos = images[1]
-                neg = images[2]
-
-                if _CUDA is True:
-                    anchor = anchor.cuda()
-                    pos = pos.cuda()
-                    neg = neg.cuda()
-
-                f_anchor = net(anchor)  # （b,1000）
-                f_pos = net(pos)
-                f_neg = net(neg)
-
-                # 将feature,label在batch维度上拼接
-                features = nn.functional.normalize(torch.cat((f_anchor, f_pos, f_neg), 0))
-                labels = torch.cat((instances[0], instances[1], instances[2]), 0)
-
-                inp_sp, inp_sn = convert_label_to_similarity(features, labels)
-                val_loss = _loss(inp_sp, inp_sn)
-
-            val_loss_np = val_loss.data.cpu().numpy()
-            VAL_LOSS.append(val_loss_np)
+        # self.net.eval()
+        # net.eval()
+        #
+        # VAL_LOSS = []
+        # for step, (images, instances) in enumerate(val_loader):
+        #     torch.cuda.empty_cache()
+        #     with torch.no_grad():
+        #         anchor = images[0]
+        #         pos = images[1]
+        #         neg = images[2]
+        #
+        #         if _CUDA is True:
+        #             anchor = anchor.cuda()
+        #             pos = pos.cuda()
+        #             neg = neg.cuda()
+        #
+        #         f_anchor = net(anchor)  # （b,1000）
+        #         f_pos = net(pos)
+        #         f_neg = net(neg)
+        #
+        #         # 将feature,label在batch维度上拼接
+        #         features = nn.functional.normalize(torch.cat((f_anchor, f_pos, f_neg), 0))
+        #         labels = torch.cat((instances[0], instances[1], instances[2]), 0)
+        #
+        #         inp_sp, inp_sn = convert_label_to_similarity(features, labels)
+        #         val_loss = _loss(inp_sp, inp_sn)
+        #
+        #     val_loss_np = val_loss.data.cpu().numpy()
+        #     VAL_LOSS.append(val_loss_np)
 
     def run_epoch(self, data_loader, is_train=True, epoch=0 ):
         if is_train:
@@ -215,8 +218,14 @@ class DetTrainer(BaseTrainer):
         avg_loss_stats = {l: AverageMeter() for l in self.loss_stats}
 
         for step, batch in enumerate(data_loader):
+
             torch.cuda.empty_cache()
+            for k in batch:
+                batch[k] = batch[k].to(device=self.para.device, non_blocking=True)
+
             output, loss, loss_stats = self.model_with_loss(batch)
+            # batch :dict = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh}
+
             loss = loss.mean()
 
             if is_train:
@@ -226,16 +235,18 @@ class DetTrainer(BaseTrainer):
 
             step_time.update(time.time() - t1)
             t1 = time.time()
-            if step % self.para.log_step == 0:
-                self.logger.debug('Step:{:<4d}  | Time:{:.2f} '.format(step, step_time))
 
             for l in avg_loss_stats:
-                avg_loss_stats[l].update(
-                    loss_stats[l].mean().item(), batch['input'].size(0))
-                self.logger.info('{} {:.4f} '.format(l, avg_loss_stats[l].avg))
+                avg_loss_stats[l].update(loss_stats[l].mean().item(), batch['input'].size(0))
 
+            if step % self.para.log_step == 0:
+                self.logger.info('| Step: {:<4d} | Time: {:.2f} | Loss: {:.4f} | hm loss: {:.4f} | wh loss: {:.4f}'.format(
+                    step, step_time.avg, avg_loss_stats['loss'].avg, avg_loss_stats['hm_loss'].avg, avg_loss_stats['wh_loss'].avg))
+
+        if not is_train:
+            self.VAL_LOSS = avg_loss_stats['loss'].avg
         ret = {k: v.avg for k, v in avg_loss_stats.items()}
-        self.logger.debug('Epoch Time:{:.2f} '.format(time.time()-t0))
+        self.logger.info('| Epoch Time: {:.2f} '.format(time.time()-t0))
         return ret, results
 
 '''  

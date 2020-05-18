@@ -4,6 +4,7 @@ import torch.nn as nn
 from utils.util import _transpose_and_gather_feat
 import torch.nn.functional as F
 
+
 def _slow_neg_loss(pred, gt):
     '''focal loss from CornerNet'''
     pos_inds = gt.eq(1)
@@ -82,7 +83,7 @@ def _slow_reg_loss(regr, gt_regr, mask):
     regr = regr[mask]
     gt_regr = gt_regr[mask]
 
-    regr_loss = nn.functional.smooth_l1_loss(regr, gt_regr, size_average=False)
+    regr_loss = nn.functional.smooth_l1_loss(regr, gt_regr, reduction='sum')
     regr_loss = regr_loss / (num + 1e-4)
     return regr_loss
 
@@ -100,7 +101,7 @@ def _reg_loss(regr, gt_regr, mask):
     regr = regr * mask
     gt_regr = gt_regr * mask
 
-    regr_loss = nn.functional.smooth_l1_loss(regr, gt_regr, size_average=False)
+    regr_loss = nn.functional.smooth_l1_loss(regr, gt_regr, reduction='sum')
     regr_loss = regr_loss / (num + 1e-4)
     return regr_loss
 
@@ -144,7 +145,7 @@ class RegL1Loss(nn.Module):
         # _transpose_and_gather_feat 用于从该特征图中计算出wh
         mask = mask.unsqueeze(2).expand_as(pred).float()
         # loss = F.l1_loss(pred * mask, target * mask, reduction='elementwise_mean')
-        loss = F.l1_loss(pred * mask, target * mask, size_average=False)
+        loss = F.l1_loss(pred * mask, target * mask, reduction='sum')
         loss = loss / (mask.sum() + 1e-4)
         return loss
 
@@ -159,7 +160,7 @@ class NormRegL1Loss(nn.Module):
         # loss = F.l1_loss(pred * mask, target * mask, reduction='elementwise_mean')
         pred = pred / (target + 1e-4)
         target = target * 0 + 1
-        loss = F.l1_loss(pred * mask, target * mask, size_average=False)
+        loss = F.l1_loss(pred * mask, target * mask, reduction='sum')
         loss = loss / (mask.sum() + 1e-4)
         return loss
 
@@ -172,7 +173,7 @@ class RegWeightedL1Loss(nn.Module):
         pred = _transpose_and_gather_feat(output, ind)  # 通过_tranpose_and_gather_feat得出我们预测的宽高
         mask = mask.float()
         # loss = F.l1_loss(pred * mask, target * mask, reduction='elementwise_mean')
-        loss = F.l1_loss(pred * mask, target * mask, size_average=False)
+        loss = F.l1_loss(pred * mask, target * mask, reduction='sum')
         loss = loss / (mask.sum() + 1e-4)
         return loss
 
@@ -242,3 +243,6 @@ def compute_rot_loss(output, target_bin, target_res, mask):
             valid_output2[:, 7], torch.cos(valid_target_res2[:, 1]))
         loss_res += loss_sin2 + loss_cos2
     return loss_bin1 + loss_bin2 + loss_res
+
+
+

@@ -309,8 +309,8 @@ def make_hg_layer(kernel, dim0, dim1, mod, layer=convolution, **kwargs):
 
 
 class HourglassNet(exkp):
-    def __init__(self, heads, num_stacks=1): # num_stacks: 沙漏结构数量
-        n = 4  # TODO：尝试2,3,4 哪种设置更适合本数据集
+    def __init__(self, heads, num_stacks=1, num_branchs = 4 ):  # num_stacks: 沙漏结构数量 num_branchs: 子分支的数量
+        n = num_branchs  # TODO：尝试2,3,[4] 哪种设置更适合本数据集
         # n 为 内部结构的个数 # input size/r/(n+1) 为整数   如448/4/5 =7 所以n最大为4 （r为pre中的下采样率）
 
         # dims    = [256, 256, 384, 384, 384, 512]
