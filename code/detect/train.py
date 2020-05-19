@@ -25,10 +25,10 @@ def main(para):
 
     logger.debug('------ Load Dataset ------')
     Train_Data = DetDataset(para, flag='train', train_num=para.train_num)
-    train_loader = DATA.DataLoader(dataset=Train_Data, batch_size=para.BATCH_SIZE * len(para.gpu_ids), shuffle=True, drop_last=True)
+    train_loader = DATA.DataLoader(dataset=Train_Data, batch_size=para.BATCH_SIZE, shuffle=True, drop_last=True)
 
     Val_Data = DetDataset(para, flag='validation', train_num=para.train_num)
-    val_loader = DATA.DataLoader(dataset=Val_Data, batch_size=para.BATCH_SIZE * len(para.gpu_ids), shuffle=False, drop_last=True)
+    val_loader = DATA.DataLoader(dataset=Val_Data, batch_size=para.BATCH_SIZE , shuffle=False, drop_last=True)
 
     # for step, data in enumerate(train_loader):
     #     logger.debug(step)
@@ -120,6 +120,6 @@ def main(para):
 
 
 if __name__ == '__main__':
-    os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
+    # os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
     parameter = cfg.Detection_Parameter()
     main(parameter)

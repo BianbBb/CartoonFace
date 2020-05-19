@@ -19,8 +19,8 @@ class BaseTrainer(object):
         self.exp_name = para.exp_name
         self.exp_path = os.path.join(self.exp_dir, self.exp_name)
 
-        if len(self.para.gpu_ids) > 0:
-            self.net = nn.DataParallel(net, device_ids=self.para.gpu_ids)
+        # if len(self.para.gpu_ids) > 0:
+        #     self.net = nn.DataParallel(net, device_ids=self.para.gpu_ids)
         self.net.to(self.device)
 
         if self.para.resume:  # 从文件中读取模型参数

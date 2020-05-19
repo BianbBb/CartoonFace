@@ -188,7 +188,7 @@ class DetDataset(DATA.Dataset):
         '''
         'input': inp,                  图像
         'hm': hm,                      中心点
-        'reg_mask': reg_mask,          ?最大5个目标，记录对应的五个输出是否都为目标
+        'reg_mask': reg_mask,          最大5个目标，记录对应的五个输出是否都为目标
         'ind': ind,                    中心在128*128(即下采样4倍后)上的索引
         'wh': wh                       目标框的宽与高
         'reg': reg                     offset 中心点的误差

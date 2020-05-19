@@ -11,10 +11,10 @@ import logging
 class Detection_Parameter():
     def __init__(self):
         # Model Path
-        self.resume = False
+        self.resume = True
         # self.exp_dir = 'G:\BBBLib\CartoonFace\exp\\'
         self.exp_dir = '/SISDC_GPFS/Home_SE/kongj-jnu/bianyh-jnu/bianyh-jnu/BBB/iqiyi/exp/'
-        self.exp_name = 'centernet.pkl'
+        self.exp_name = 'centernet-0518-2044-0.000.pkl'
         self.exp_path = os.path.join(self.exp_dir, self.exp_name)
         # Dataset Setting
         # self.img_dir = 'G:\BBBLib\CartoonFace\data\personai_icartoonface_dettrain\icartoonface_dettrain\\'
@@ -61,8 +61,8 @@ class Detection_Parameter():
         self.seed = 2020
 
         # Network Setting
-        self.gpu_ids = [0, 1, 2, 3]
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.gpu_ids = [0]
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         # Optimizer
         self.optimizer = 'SGD'
@@ -78,9 +78,9 @@ class Detection_Parameter():
 
         # Train
         self.train_num = 40000  # 在训练数据中选取前40000个作为训练集，其余为验证集
-        self.BATCH_SIZE = 4  # 10,16,20...
+        self.BATCH_SIZE = 8  # 4,8,12,16,20...
         self.EPOCH = 200
-        self.log_step = 20  # 每隔20step，输出一次训练信息
+        self.log_step = 50  # 每隔50step，输出一次训练信息
         self.SEED = 2020
 
 
