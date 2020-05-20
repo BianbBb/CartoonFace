@@ -12,7 +12,7 @@ class Detection_Parameter():
     def __init__(self):
         # Model Path
         self.resume = True
-        # self.exp_dir = 'G:\BBBLib\CartoonFace\exp\\'
+        #self.exp_dir = 'G:\BBBLib\CartoonFace\exp\\'
         self.exp_dir = '/SISDC_GPFS/Home_SE/kongj-jnu/bianyh-jnu/bianyh-jnu/BBB/iqiyi/exp/'
         self.exp_name = 'centernet-0518-2044-0.000.pkl'
         self.exp_path = os.path.join(self.exp_dir, self.exp_name)
@@ -24,6 +24,12 @@ class Detection_Parameter():
                        'data/personai_icartoonface_dettrain/icartoonface_dettrain/'
         self.anno_path = '/SISDC_GPFS/Home_SE/kongj-jnu/bianyh-jnu/bianyh-jnu/BBB/iqiyi/' \
                          'data/personai_icartoonface_dettrain/icartoonface_dettrain.csv'
+
+        self.test_dir = '/SISDC_GPFS/Home_SE/kongj-jnu/bianyh-jnu/bianyh-jnu/BBB/iqiyi/' \
+                         'data/personai_icartoonface_detval/'
+        #self.test_dir = 'G:/BBBLib/CartoonFace/data/personai_icartoonface_detval' \
+
+
 
         self.max_objs = 5  # 一张image中最多目标数量
 
@@ -97,6 +103,11 @@ class Detection_Parameter():
         self.logger.debug('Heads      : {}'.format(self.heads))
         self.logger.debug('Batch Size : {}'.format(self.BATCH_SIZE))
         self.logger.debug('---------------------------------------')
+
+        # Test
+        self.K = 10  # 在heatmap中选取的极大值点的个数
+        self.max_per_image =5
+        self.nms = True
 
     def get_logger(self, logger_name='my_logger'):
         logger = logging.getLogger(logger_name)

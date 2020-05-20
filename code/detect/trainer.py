@@ -173,6 +173,7 @@ class DetTrainer(BaseTrainer):
     def train(self):
         return self.run_epoch(self.train_loader, is_train=True)
 
+    # @torch.no_grad()
     def val(self):
         return self.run_epoch(self.val_loader, is_train=False)
         # self.BEST_VAL_LOSS = None
@@ -212,8 +213,8 @@ class DetTrainer(BaseTrainer):
         else:
             self.net.eval()
 
-        t0 = time.time() # epoch timer
-        t1 = time.time() # step timer
+        t0 = time.time()  # epoch timer
+        t1 = time.time()  # step timer
         step_time = AverageMeter()
         results = {}
         avg_loss_stats = {l: AverageMeter() for l in self.loss_stats}
@@ -226,7 +227,6 @@ class DetTrainer(BaseTrainer):
 
             output, loss, loss_stats = self.model_with_loss(batch)
             # batch :dict = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh}
-
             loss = loss.mean()
 
             if is_train:

@@ -280,13 +280,13 @@ class exkp(nn.Module):
         inter = self.pre(image) # Conv + Res
         outs  = []
 
-        for ind in range(self.nstack): #### Hourglass  # nstack 为2 ，设置了两个沙漏结构
+        for ind in range(self.nstack):  # ### Hourglass  # nstack 为2 ，设置了两个沙漏结构
             kp_, cnv_  = self.kps[ind], self.cnvs[ind]  # 第一个沙漏结构，ind = 1
             kp = kp_(inter)
             cnv = cnv_(kp)
 
             out = {}
-            for head in self.heads:    #heads  = {'hm_t': 1, 'hm_l': 1,   'hm_b': 1, 'hm_r': 1,}
+            for head in self.heads:    # heads  = {'hm': 1, 'wh': 2}
 
                 layer = self.__getattr__(head)[ind]  # layer = self.__getattr__('hm_t')[0]
 

@@ -38,11 +38,11 @@ class DetDataset(DATA.Dataset):
         '''
 
         self.para = para
-        self.img_dir =  self.para.img_dir
-        self.anno_path =  self.para.anno_path
-        self.max_objs =  self.para.max_objs
+        self.img_dir = self.para.img_dir
+        self.anno_path = self.para.anno_path
+        self.max_objs = self.para.max_objs
 
-        self.box_dict ={}
+        self.box_dict = {}
 
         with open(self.anno_path, 'r') as f:
             lines = csv.reader(f)
@@ -96,7 +96,7 @@ class DetDataset(DATA.Dataset):
         input_h, input_w = self.para.input_h, self.para.input_w
 
         # 数据增强
-        flipped = False # 翻转增强的flag
+        flipped = False  # 翻转增强的flag
         if not self.para.not_rand_crop:
             s = s * np.random.choice(np.arange(0.6, 1.4, 0.1))  # 随机尺度
             w_border = self._get_border(128, img.shape[1])  # 图像的w<256,为64；w>256,为128 仿射变换需要应用
@@ -217,12 +217,13 @@ if __name__ == '__main__':
     logger = para.logger
     dataset = DetDataset(para,flag='train',train_num=6)
     #dataset = DetDataset(para, flag='test', train_num=6)
-    train_loader = DATA.DataLoader(dataset=dataset, batch_size=2, shuffle=False)
+    train_loader = DATA.DataLoader(dataset=dataset, batch_size=1, shuffle=False)
     for step, data in enumerate(train_loader):
         logger.debug(step)
         logger.debug(data['reg_mask'])
         ind = (data['ind']).numpy()[0]
         wh = (data['wh']).numpy()[0]
+
 
         input = data['input']
         input = input.numpy()[0]
