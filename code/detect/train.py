@@ -9,6 +9,7 @@ import config as cfg
 from detect.dataload import DetDataset
 from backbone.Hourglass.large_hourglass import HourglassNet
 from detect.trainer import DetTrainer
+from detect.network import Network
 
 def main(para):
     torch.manual_seed(para.seed)
@@ -18,7 +19,8 @@ def main(para):
     #device = para.device
 
     logger.debug('------ Load Network ------')
-    net = HourglassNet(para.heads, num_stacks=1, num_branchs=para.num_branchs)
+    network = Network(para)
+    net = network.net
     # # from torchsummary import summary
     # #     # summary(net.cuda(),(3,512,512),batch_size=8)
     # #     # print(net)

@@ -11,26 +11,21 @@ import logging
 class Detection_Parameter():
     def __init__(self):
         # Model Path
-        self.resume = True
-        #self.exp_dir = 'G:\BBBLib\CartoonFace\exp\\'
-        self.exp_dir = '/SISDC_GPFS/Home_SE/kongj-jnu/bianyh-jnu/bianyh-jnu/BBB/iqiyi/exp/'
-        self.exp_name = 'centernet-0518-2044-0.000.pkl'
-        self.exp_path = os.path.join(self.exp_dir, self.exp_name)
+        self.resume = False
+
+        # 训练后的模型参数
+        self.exp_dir = None
+        self.exp_name = 'centernet-0520-1446-1.363.pkl'
+        self.exp_path = None
+
+        # Dataset
+        self.img_dir = None
+        self.anno_path = None
+        self.test_dir = None
+
+        self.set_path('lab')  # 可选：lab, cs , my, tc
+
         # Dataset Setting
-        # self.img_dir = 'G:\BBBLib\CartoonFace\data\personai_icartoonface_dettrain\icartoonface_dettrain\\'
-        # self.anno_path = 'G:\BBBLib\CartoonFace\data/personai_icartoonface_dettrain/icartoonface_dettrain_short.csv'
-
-        self.img_dir = '/SISDC_GPFS/Home_SE/kongj-jnu/bianyh-jnu/bianyh-jnu/BBB/iqiyi/' \
-                       'data/personai_icartoonface_dettrain/icartoonface_dettrain/'
-        self.anno_path = '/SISDC_GPFS/Home_SE/kongj-jnu/bianyh-jnu/bianyh-jnu/BBB/iqiyi/' \
-                         'data/personai_icartoonface_dettrain/icartoonface_dettrain.csv'
-
-        self.test_dir = '/SISDC_GPFS/Home_SE/kongj-jnu/bianyh-jnu/bianyh-jnu/BBB/iqiyi/' \
-                         'data/personai_icartoonface_detval/'
-        #self.test_dir = 'G:/BBBLib/CartoonFace/data/personai_icartoonface_detval' \
-
-
-
         self.max_objs = 5  # 一张image中最多目标数量
 
         self.no_color_aug = False
@@ -45,10 +40,13 @@ class Detection_Parameter():
         self.output_h = self.input_h // self.down_ratio
         self.output_w = self.input_w // self.down_ratio
 
+        # NetWork Setting
+        self.model = 'Hourglass'
         self.num_classes = 1
         self.heads = {'hm': self.num_classes,  'wh': 2}
         self.head_conv = 64
-        self.num_branchs = 4  # Hourglass的子分支数目
+        self.num_branchs = 3  # Hourglass的子分支数目
+        self.dims = [256,256,256,256] # [256, 256,256, 512, 1024]
 
         self.reg_offset = False
         if self.reg_offset:
@@ -81,15 +79,12 @@ class Detection_Parameter():
         self.eval_oracle_hm = True # Use Ground Truth
         self.eval_oracle_wh = True
 
-
         # Train
         self.train_num = 40000  # 在训练数据中选取前40000个作为训练集，其余为验证集
-        self.BATCH_SIZE = 8  # 4,8,12,16,20...
+        self.BATCH_SIZE = 16  # 4,8,12,16,20...
         self.EPOCH = 200
         self.log_step = 50  # 每隔50step，输出一次训练信息
         self.SEED = 2020
-
-
 
         # Logging
         self.logger = self.get_logger()
@@ -105,9 +100,10 @@ class Detection_Parameter():
         self.logger.debug('---------------------------------------')
 
         # Test
-        self.K = 10  # 在heatmap中选取的极大值点的个数
-        self.max_per_image =5
+        self.K = 100  # 在heatmap中选取的极大值点的个数
+        self.max_per_image = 20 # 20
         self.nms = True
+        self.result_csv = '/home/byh/CartoonFace/result/result.csv'
 
     def get_logger(self, logger_name='my_logger'):
         logger = logging.getLogger(logger_name)
@@ -117,6 +113,40 @@ class Detection_Parameter():
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         return logger
+
+    def set_path(self, platform='lab'):
+
+        if platform is 'lab':
+            self.exp_dir = '/home/byh/CartoonFace/exp/'
+            self.exp_path = os.path.join(self.exp_dir, self.exp_name)
+            # self.img_dir = '/home/byh/CartoonFace/data/personai_icartoonface_dettrain/icartoonface_dettrain/'
+            # self.anno_path = '/home/byh/CartoonFace/data/personai_icartoonface_dettrain/icartoonface_dettrain.csv'
+            # self.test_dir = '/home/byh/CartoonFace/data/personai_icartoonface_detval/'
+
+            self.img_dir = '/data/byh/CartoonFace/personai_icartoonface_dettrain/icartoonface_dettrain/'
+            self.anno_path = '/data/byh/CartoonFace/personai_icartoonface_dettrain/icartoonface_dettrain.csv'
+            self.test_dir = '/data/byh/CartoonFace/personai_icartoonface_detval/'
+
+        elif platform is 'cs':
+            self.exp_dir = '/SISDC_GPFS/Home_SE/kongj-jnu/bianyh-jnu/bianyh-jnu/BBB/iqiyi/exp/'
+            self.exp_path = os.path.join(self.exp_dir, self.exp_name)
+            self.img_dir = '/SISDC_GPFS/Home_SE/kongj-jnu/bianyh-jnu/bianyh-jnu/BBB/iqiyi/' \
+                           'data/personai_icartoonface_dettrain/icartoonface_dettrain/'
+            self.anno_path = '/SISDC_GPFS/Home_SE/kongj-jnu/bianyh-jnu/bianyh-jnu/BBB/iqiyi/' \
+                             'data/personai_icartoonface_dettrain/icartoonface_dettrain.csv'
+
+            self.test_dir = '/SISDC_GPFS/Home_SE/kongj-jnu/bianyh-jnu/bianyh-jnu/BBB/iqiyi/' \
+                            'data/personai_icartoonface_detval/'
+        elif platform is 'my':
+            self.exp_dir = 'G:\\BBBLib/CartoonFace/exp/'
+            self.exp_path = os.path.join(self.exp_dir, self.exp_name)
+            self.img_dir = 'G:\\BBBLib/CartoonFace/data/personai_icartoonface_dettrain/icartoonface_dettrain/'
+            self.anno_path = 'G:\\BBBLib/CartoonFace/data/personai_icartoonface_dettrain/icartoonface_dettrain_short.csv'
+            self.test_dir = 'G:\\BBBLib/CartoonFace/data/personai_icartoonface_detval/'
+
+        elif platform is 'tc':
+            pass
+
 
 if __name__ == '__main__':
     para = Detection_Parameter()

@@ -4,7 +4,7 @@ import os
 import cv2
 import numpy as np
 import time
-import json
+import csv
 
 import sys
 sys.path.append("..")
@@ -12,7 +12,8 @@ import config as cfg
 from utils.util import _gather_feat, _transpose_and_gather_feat
 from backbone.Hourglass.large_hourglass import HourglassNet
 from utils.image import get_affine_transform, transform_preds
-
+from utils.nms.nms import soft_nms,nms
+from detect.network import Network
 
 def _nms(heat, kernel=3):
     # 8-近邻极大值点 ，极大值点处的heat被保留，其余点为0
@@ -47,16 +48,22 @@ class Tester(object):
         self.para = para
         self.logger = para.logger
         self.device = para.device
-        self.net = None
+
         self.test_dir = para.test_dir
+        self.result_file = open(self.para.result_csv, 'w', encoding='utf-8')
+        self.csv_writer = csv.writer(self.result_file)
+
+        self.network = Network(para)
+        self.net = self.network.net
 
     def run(self):
         self.logger.debug('------ Load Network ------')
-        self.net = HourglassNet(self.para.heads, num_stacks=1, num_branchs=self.para.num_branchs)
+
         self.load_weight()
         self.net.eval()
 
         self.logger.debug('------ Test ------')
+
         for file_name in os.listdir(self.test_dir):
             img_path = os.path.join(self.test_dir, file_name)
             img = cv2.imread(img_path)
@@ -65,19 +72,17 @@ class Tester(object):
             inputs = inputs.to(self.para.device)
 
             # torch.cuda.synchronize()  # 需要计算test时间时使用
-            outputs, dets = self.get_output(self.net, inputs)[-1]
+            outputs, dets = self.get_output(self.net, inputs)
             # outputs : 网络的输出 hm:1*w*h  wh:2*w*h
-            # dets : [bboxes, scores, clses]
+            # dets : [bboxes:, scores, clses]
 
-            print(dets)  ##
             dets = self.post_process(dets, meta)
-            print(dets)  ##
             results = self.merge_outputs(dets)  # bboxes
-            print(results)  ##
 
-            self.show_sample(img, results)
-            self.create_json()
+            #self.show_sample(img, results, file_name)
+            self.create_csv(file_name,results) #TODO: save result csv
 
+        self.result_file.close()
 
     def load_weight(self):
         try:
@@ -90,36 +95,6 @@ class Tester(object):
         except FileNotFoundError:
             self.logger.warning('Can not find feature.pkl !')
             return False
-
-    '''
-    def get_input(self,img_path, para):
-        # 按train进行归一化，修改
-        img = cv2.imread(img_path)
-        height, width = img.shape[0], img.shape[1]
-        h_ratio = height / para.input_h
-        w_ratio = width / para.input_w
-
-        c = np.array([img.shape[1] / 2., img.shape[0] / 2.], dtype=np.float32)  ## 获取中心点
-
-        # 将图片仿射变换为512,512
-        s = max(img.shape[0], img.shape[1]) * 1.0
-        input_h, input_w = para.input_h, para.input_w
-
-        trans_input = get_affine_transform(
-            c, s, 0, [input_w, input_h])
-        inp = cv2.warpAffine(img, trans_input,
-                             (input_w, input_h),
-                             flags=cv2.INTER_LINEAR)  # 仿射变换
-        inp = (inp.astype(np.float32) / 255.)
-        inp = (inp - para.mean) / para.std
-
-        # cv2.imwrite('./test/'+img_path[-9 :-4]+'_inp.jpg', inp)  
-        # print('./test/'+img_path[-9 :-4]+'_inp.jpg')
-
-        inp = inp.transpose(2, 0, 1)
-
-        return inp, h_ratio, w_ratio
-    '''
 
     def pre_process(self, image):
         height, width = image.shape[0:2]
@@ -152,15 +127,15 @@ class Tester(object):
     @torch.no_grad()
     def get_output(self, net, inputs):
         torch.cuda.empty_cache()
-        inputs = torch.unsqueeze(inputs, dim=0).float()  # inputs的batch_size = 1时
+        # inputs = torch.unsqueeze(inputs, dim=0).float()  # inputs的batch_size = 1时
         output = net(inputs)
 
+        output = output[-1]  # 取batch中第0个图片的结果
         hm = output['hm'].sigmoid_()
         wh = output['wh']
 
         # 将hm,wh转换为bbox
         dets = self.ctdet_decode(hm, wh,  K=self.para.K)
-
         return output, dets
 
     def ctdet_decode(self, heat, wh, reg=None, K=40, ):
@@ -180,13 +155,16 @@ class Tester(object):
             ys = ys.view(batch, K, 1) + 0.5
         wh = _transpose_and_gather_feat(wh, inds)
         wh = wh.view(batch, K, 2)
-        clses = clses.view(batch, K, 1).float() ##
+        clses = clses.view(batch, K, 1).float()  # ##
         scores = scores.view(batch, K, 1)
         bboxes = torch.cat([xs - wh[..., 0:1] / 2,
                             ys - wh[..., 1:2] / 2,
                             xs + wh[..., 0:1] / 2,
                             ys + wh[..., 1:2] / 2], dim=2)
+
+
         detections = torch.cat([bboxes, scores, clses], dim=2)
+
         # detections = torch.cat([bboxes, scores], dim=2)
         return detections
 
@@ -194,10 +172,12 @@ class Tester(object):
         num_classes = 1
         dets = dets.detach().cpu().numpy()
         dets = dets.reshape(1, -1, dets.shape[2])
-        dets = self.ctdet_post_process(dets.copy(), [meta['c']], [meta['s']],meta['out_height'], meta['out_width'], num_classes)
+        dets = self.ctdet_post_process(dets.copy(), [meta['c']], [meta['s']], meta['out_height'], meta['out_width'], num_classes)
         for j in range(1, num_classes + 1):
             dets[0][j] = np.array(dets[0][j], dtype=np.float32).reshape(-1, 5)
             dets[0][j][:, :4] /= scale
+
+
         return dets[0]
 
     def ctdet_post_process(self, dets, c, s, h, w, num_classes):
@@ -223,13 +203,12 @@ class Tester(object):
         num_classes = 1
         results = {}
         for j in range(1, num_classes + 1):
-            results[j] = np.concatenate(
-                [detection[j] for detection in detections], axis=0).astype(np.float32)
-            '''
-            # if len(self.scales) > 1 or self.para.nms:
+            results[j] = detections[j]
+        # for j in range(1, num_classes + 1):
+        #     results[j] = np.concatenate([detections[j] for detection in detections], axis=0).astype(np.float32)
             if self.para.nms:
+                # nms(results[j],0.1)
                 soft_nms(results[j], Nt=0.5, method=2)
-            '''
 
         scores = np.hstack(
             [results[j][:, 4] for j in range(1, num_classes + 1)])
@@ -241,16 +220,24 @@ class Tester(object):
                 results[j] = results[j][keep_inds]
         return results
 
-    def show_sample(self, img , results):
-        cv2.imshow('img',img)
-        cv2.waitKey(0)
-        print('---------show sample---result---')
-        print(results)
-        time.sleep(20000)
+    def show_sample(self, img, results,file_name):
+        # cv2.imshow('img',img)
+        # cv2.waitKey(0)
+        img_ = img
+        bboxes = np.array(results[1][:, :-1], dtype=np.int32)
+        score = results[1][:, -1]
+        for i, box in enumerate(bboxes):
+            cv2.rectangle(img_, (box[0], box[1]), (box[2], box[3]), (int(255*score[i]), 255-int(255*score[i]), 255),thickness=2)
 
-    def create_json(self):
-        print('FFINISH')  ##
-        pass
+        cv2.imwrite('/home/byh/CartoonFace/result/'+file_name[-9:-4]+'_box.jpg', img_)
+        #time.sleep(1)
+
+    def create_csv(self, file_name, results):
+        bboxes = np.array(results[1][:, :-1], dtype=np.int32)
+        score = results[1][:, -1]
+        for i, box in enumerate(bboxes):
+            line = [file_name, box[0], box[1], box[2], box[3], 'face', '{:.2f}'.format(score[i])]
+            self.csv_writer.writerow(line)
 
 
 if __name__ == '__main__':

@@ -178,6 +178,8 @@ class kp_module(nn.Module):
 
         self.merge = make_merge_layer(curr_dim)
 
+        # self.out = []
+
     def forward(self, x):
         up1  = self.up1(x)
         max1 = self.max1(x)
@@ -185,7 +187,9 @@ class kp_module(nn.Module):
         low2 = self.low2(low1)
         low3 = self.low3(low2)
         up2  = self.up2(low3)
+        # self.out.append(low2) ## 记录每一次low2后的输出，用于相关性的检验
         return self.merge(up1, up2)
+
 
 class exkp(nn.Module):
     '''
@@ -309,12 +313,12 @@ def make_hg_layer(kernel, dim0, dim1, mod, layer=convolution, **kwargs):
 
 
 class HourglassNet(exkp):
-    def __init__(self, heads, num_stacks=1, num_branchs = 4 ):  # num_stacks: 沙漏结构数量 num_branchs: 子分支的数量
+    def __init__(self, heads, num_stacks=1, num_branchs = 4, dims=[256, 256,256, 512, 1024] ):  # num_stacks: 沙漏结构数量 num_branchs: 子分支的数量
         n = num_branchs  # TODO：尝试2,3,[4] 哪种设置更适合本数据集
         # n 为 内部结构的个数 # input size/r/(n+1) 为整数   如448/4/5 =7 所以n最大为4 （r为pre中的下采样率）
 
-        # dims    = [256, 256, 384, 384, 384, 512]
-        dims = [256, 256,256, 512, 1024] # len(dim) = n+1
+        # dims    = [256, 256, 384, 384, 384, 512]  # CenterNet结构
+        # dims = [256, 256,256, 512, 1024] # len(dim) = n+1  # 修改的结构
         modules = [2, 2, 2, 2, 2, 4]
 
         super(HourglassNet, self).__init__(
@@ -336,6 +340,6 @@ if __name__ == '__main__':
     heads = {'hm': 1, 'wh': 2}
     # hm:类别数
     # wh:长、宽
-    net = HourglassNet(heads,1 )
+    net = HourglassNet(heads,1 ,3)
     summary(net, (3,64,64), device='cpu')
     print(net)
