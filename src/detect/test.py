@@ -81,7 +81,7 @@ class Tester(object):
             results = self.merge_outputs(dets)  # bboxes
 
             #self.show_sample(img, results, file_name)
-            self.create_csv(file_name,results) #TODO: save result csv
+            self.create_csv(file_name,results)
 
         self.result_file.close()
 
