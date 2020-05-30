@@ -245,3 +245,32 @@ def compute_rot_loss(output, target_bin, target_res, mask):
 
 
 
+class BGLoss(nn.Module):
+    # 用于计算背景与GT的loss L2损失
+    def __init__(self):
+        super(BGLoss, self).__init__()
+        self.bg_loss = _bg_loss
+
+    def forward(self, output, truth):
+        #return self.bg_loss(output, truth)
+        #return F.smooth_l1_loss(output, truth, reduction='mean')
+        return F.mse_loss(output, truth, reduction='mean') + \
+               F.smooth_l1_loss(output, truth, reduction='mean')
+
+
+def _bg_loss(output, truth):
+    #return torch.mean((output - truth) ** 2)+torch.nn.SmoothL1Loss(output,truth)
+    # return torch.mean((output - truth) ** 2, dim=(-1, -2))
+    return torch.nn.SmoothL1Loss(output,truth)
+
+if __name__ == '__main__':
+    loss = FocalLoss()
+    x = torch.rand(3,1,24,24)
+    y = torch.rand(3,1,24,24)
+    l = loss(x,y)
+    print(l)
+    print(l.size())
+
+
+
+

@@ -19,9 +19,7 @@ class TripletLoss(nn.Module):
         distance_positive = self.calculate_euclidean(anchor, positive)
         distance_negative = self.calculate_euclidean(anchor, negative)
         losses = F.relu(distance_positive - distance_negative + self.margin)
-
         return losses.mean() if size_average else losses.sum()
-
 
 
 def convert_label_to_similarity(normed_feature: Tensor, label: Tensor) -> Tuple[Tensor, Tensor]:
@@ -59,14 +57,52 @@ class CircleLoss(nn.Module):
         return loss
 
 
+# triplet loss with pos feature enhance
+class MyLoss(nn.Module):
+    def __init__(self, margin=1.0, gamma=2.0):
+        super().__init__()
+        self.margin = margin
+        self.gamma = gamma
+
+    def calculate_euclidean(self, x1, x2):
+        return (x1 - x2).pow(2).sum(1)
+
+    def calculate_pos_anchor(self,anchor,pos):
+        return (1-anchor).pow(self.gamma) * pos.pow(self.gamma) + \
+               anchor.pow(self.gamma) *(1-pos).pow(self.gamma)
+
+    def forward(self, anchor, positive, negative, size_average=True):
+        distance_positive = self.calculate_euclidean(anchor, positive)
+        distance_negative = self.calculate_euclidean(anchor, negative)
+        losses = F.relu(distance_positive - distance_negative + self.margin)
+        return losses.mean() if size_average else losses.sum()
+
+
 if __name__ == "__main__":
-    feat = nn.functional.normalize(torch.rand(24,1000, requires_grad=True))
-    lbl = torch.randint(high=10, size=(24,))
-    print(lbl.numpy())
-    #lbl = [['a','s','a']]
-    inp_sp, inp_sn = convert_label_to_similarity(feat, lbl)
+    feat = nn.functional.normalize(torch.rand(2,3,10, requires_grad=True))
+    # lbl = torch.randint(high=10, size=(24,))
+    # print(lbl.numpy())
+    # #lbl = [['a','s','a']]
+    # inp_sp, inp_sn = convert_label_to_similarity(feat, lbl)
 
-    criterion = CircleLoss(m=0.25, gamma=256)
-    circle_loss = criterion(inp_sp, inp_sn)
+    # criterion = CircleLoss(m=0.25, gamma=256)
+    # circle_loss = criterion(inp_sp, inp_sn)
+    #print(circle_loss)
+    print(feat)
+    a = feat[:,0,:]
+    print(a.size())
+    p = feat[:,1,:]
+    n = feat[:,2,:]
 
-    print(circle_loss)
+    criterion = MyLoss()
+    loss = criterion(a,p,n)
+    print(loss)
+
+    # a = feat[:, 0, :]
+    # b = feat[:, 1, :]
+    # loss = (1-a).pow(2.0) * b
+    # print(loss.sum(1))
+
+
+
+

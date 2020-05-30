@@ -48,8 +48,8 @@ class Detection_Parameter(Base_parameter):
     def __init__(self):
         super(Detection_Parameter,self).__init__()
         # Model Path
-        self.resume = False
-        self.exp_name = 'centernet-0521-1723-1.559.pkl'
+        self.resume = True
+        self.exp_name = 'sk-0521-1723-1.559.pkl'
 
         # Dataset
         self.img_dir = None
@@ -73,7 +73,7 @@ class Detection_Parameter(Base_parameter):
         self.output_w = self.input_w // self.down_ratio
 
         # NetWork Setting
-        self.model = 'Hourglass'# 'Hourglass'
+        self.model = 'Hourglass_SK'  # 'Hourglass'
 
         self.num_classes = 1
         self.heads = {'hm': self.num_classes,  'wh': 2}
@@ -176,7 +176,7 @@ class Recogniton_Parameter(Base_parameter):
         super(Recogniton_Parameter, self).__init__()
         # Model Path
         self.resume = False
-        self.exp_name = 'xx.pkl'
+        self.exp_name = 'resnest-0526-1933-0.866.pkl'
 
         # Dataset
         self.train_path = None
@@ -196,7 +196,7 @@ class Recogniton_Parameter(Base_parameter):
         self.output_w = self.input_w // self.down_ratio
 
         # NetWork Setting
-        self.model = 'ResNeSt'
+        self.model = 'ResNest_sigmoid' #'ResNest_tanh_fc'
 
         self._data_rng = np.random.RandomState(123)
         self._eig_val = np.array([0.2141788, 0.01817699, 0.00341571], dtype=np.float32)
@@ -209,7 +209,8 @@ class Recogniton_Parameter(Base_parameter):
         self.std = np.array([0.28863828, 0.27408164, 0.27809835], dtype=np.float32).reshape(1, 1, 3)
 
         # Optimizer
-        self.optimizer = 'SGD'
+        # self.optimizer = 'SGD'
+        self.optimizer = 'Adam'
         self.lr = 0.001
         self.momentum = 0.9
         self.weight_decay = 1e-5

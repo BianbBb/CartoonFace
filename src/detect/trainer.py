@@ -2,7 +2,12 @@ import time
 import torch
 import numpy as np
 import os
-from detect.losses import FocalLoss
+import cv2
+
+import sys
+sys.path.append("..")
+
+from detect.losses import FocalLoss,BGLoss
 from detect.losses import RegL1Loss, RegLoss, NormRegL1Loss
 # from .decode import ctdet_decode
 from utils.util import _sigmoid
@@ -24,31 +29,33 @@ class ModelWithLoss(torch.nn.Module):
         outputs = self.model(batch['input'])
         # input输入model，得到输出：hm和wh
         loss, loss_stats = self.loss(outputs, batch)
-        return outputs[-1], loss, loss_stats
+        return outputs, loss, loss_stats
 
 class CtdetLoss(torch.nn.Module):
     def __init__(self, para):
         super(CtdetLoss, self).__init__()
         self.crit = FocalLoss()
+        self.crit_bg = BGLoss()
         self.crit_reg = RegL1Loss() if para.reg_loss == 'l1' else \
             RegLoss() if para.reg_loss == 'sl1' else None
         self.crit_wh = self.crit_reg  # 或NormRegL1Loss()
         self.para = para
 
-    def forward(self, outputs, batch):
-        num_stacks = 1    # num_stacks = 1 沙漏结构数量，本网络设置为1
+    def forward(self, output, batch):
         hm_loss, wh_loss, off_loss = 0, 0, 0
-        for s in range(num_stacks):
-            output = outputs[s]
-            output['hm'] = _sigmoid(output['hm'])
-            hm_loss = hm_loss + self.crit(output['hm'], batch['hm']) / num_stacks   ## heatmap loss
 
-            ## wh loss
-            wh_loss = wh_loss + self.crit_reg(output['wh'], batch['reg_mask'], batch['ind'], batch['wh']) / num_stacks
+        output['hm'] = _sigmoid(output['hm'])
+        output['hm_b'] = _sigmoid(output['hm_b'])
+        hm_loss = self.crit(output['hm'], batch['hm']) ## heatmap loss
+        gt_bg = 1 - batch['hm'] * 2
+        hm_b_loss = self.crit_bg(output['hm'], gt_bg)
 
-        loss = 1.0 * hm_loss + 0.1 * wh_loss
+        ## wh loss
+        wh_loss = wh_loss + self.crit_reg(output['wh'], batch['reg_mask'], batch['ind'], batch['wh'])
 
-        loss_stats = {'loss': loss, 'hm_loss': hm_loss,
+        loss = 1.0 * hm_loss + 1.0 * hm_b_loss + 0.1 * wh_loss
+
+        loss_stats = {'loss': loss, 'hm_loss': hm_loss, 'hm_b_loss': hm_b_loss,
                       'wh_loss': wh_loss, 'off_loss': off_loss}
         return loss, loss_stats
 
@@ -71,7 +78,7 @@ class DetTrainer(BaseTrainer):
 
     def get_losses(self, para):
         # loss_states = ['loss', 'hm_loss', 'wh_loss', 'off_loss']
-        loss_states = ['loss', 'hm_loss', 'wh_loss']
+        loss_states = ['loss', 'hm_loss','hm_b_loss', 'wh_loss']
         loss = CtdetLoss(para)
         return loss_states, loss
 
@@ -82,11 +89,10 @@ class DetTrainer(BaseTrainer):
 
     def run(self):
         for epoch in range(self.para.EPOCH):
-
             torch.cuda.empty_cache()
-            self.logger.debug('-------------------------- train epoch ------------------------')
+            self.logger.debug('|  Train  Epoch : {} ------------------------  |'.format(epoch))
             self.train()
-            self.logger.debug('--------------------------- val epoch -------------------------')
+            self.logger.debug('|  Val  Epoch : {} ------------------------  |'.format(epoch))
             self.val()
 
             self.logger.info('|Val Loss: {:.4f}'.format(np.mean(self.VAL_LOSS)))
@@ -100,7 +106,7 @@ class DetTrainer(BaseTrainer):
 
 
     def save_model(self):
-        pkl_save_name = 'centernet-{}-{:.3f}.pkl'.format(
+        pkl_save_name = 'sk-{}-{:.3f}.pkl'.format(
             time.strftime("%m%d-%H%M", time.localtime()), self.BEST_VAL_LOSS)
         pkl_save_path = os.path.join(self.exp_dir, pkl_save_name)
         torch.save(self.net.state_dict(), pkl_save_path)
@@ -175,8 +181,10 @@ class DetTrainer(BaseTrainer):
                 avg_loss_stats[l].update(loss_stats[l].mean().item(), batch['input'].size(0))
 
             if step % self.para.log_step == 0:
-                self.logger.info('| Step: {:<4d} | Time: {:.2f} | Loss: {:.4f} | hm loss: {:.4f} | wh loss: {:.4f}'.format(
-                    step, step_time.avg, avg_loss_stats['loss'].avg, avg_loss_stats['hm_loss'].avg, avg_loss_stats['wh_loss'].avg))
+                self.logger.info('| Step: {:<4d} | Time: {:.2f} | Loss: {:.4f} '
+                                 '| hm loss: {:.4f} | hm_b loss: {:.4f} | wh loss: {:.4f}'.format(
+                    step, step_time.avg, avg_loss_stats['loss'].avg,
+                           avg_loss_stats['hm_loss'].avg,avg_loss_stats['hm_b_loss'].avg,avg_loss_stats['wh_loss'].avg))
 
         if not is_train:
             self.VAL_LOSS = avg_loss_stats['loss'].avg

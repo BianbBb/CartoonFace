@@ -34,12 +34,6 @@ class BaseTrainer(object):
             self.logger.info('Net Parameters Loaded Successfully!')
         except FileNotFoundError:
             self.logger.warning('Can not find feature.pkl !')
-        '''
-         except torch weights name mismatch：
-            log
-            bujiazai 
-         
-        '''
 
 
     def set_optimizer(self):

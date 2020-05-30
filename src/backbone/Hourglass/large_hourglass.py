@@ -288,6 +288,7 @@ class exkp(nn.Module):
             kp_, cnv_  = self.kps[ind], self.cnvs[ind]  # 第一个沙漏结构，ind = 1
             kp = kp_(inter)
             cnv = cnv_(kp)
+            print(cnv.size())
 
             out = {}
             for head in self.heads:    # heads  = {'hm': 1, 'wh': 2}
@@ -336,10 +337,12 @@ def get_large_hourglass_net(num_layers, heads, head_conv):
 
 if __name__ == '__main__':
     from torchsummary import summary
-
+    import torch
     heads = {'hm': 1, 'wh': 2}
-    # hm:类别数
-    # wh:长、宽
-    net = HourglassNet(heads,1 ,3)
-    summary(net, (3,64,64), device='cpu')
-    print(net)
+    # # hm:类别数
+    # # wh:长、宽
+    net = HourglassNet(heads,1 ,2)
+    x = torch.rand(5, 3, 512,512)
+    z = net(x)
+    print(z[0]['hm'].size())
+    print(z[0]['wh'].size())

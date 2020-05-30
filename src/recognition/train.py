@@ -9,7 +9,9 @@ import config as cfg
 from recognition.dataload import RecDataset
 
 from recognition.trainer import RecTrainer
-from recognition.network import ResNeSt
+from recognition.network import Network
+
+
 
 def main(para):
     torch.manual_seed(para.SEED)
@@ -19,7 +21,8 @@ def main(para):
     #device = para.device
 
     logger.debug('------ Load Network ------')
-    net = ResNeSt(para)
+    network = Network(para)
+    net = network.net
 
     # from torchsummary import summary
     # summary(net, (3,512,512),batch_size=8)

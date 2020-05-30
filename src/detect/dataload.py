@@ -230,16 +230,21 @@ if __name__ == '__main__':
         input = input.transpose([1,2,0])
 
         hm = data['hm']
-        hm = hm.numpy()[0][0]
-        for i in range(len(ind)):
-            y = ind[i]//128
-            x = ind[i] % 128
-            w,h  = wh[i]
-            hm = cv2.rectangle(hm, (x-int(w/2), y-int(h/2)), (x+int(w/2), y+int(h/2)), (255, 255, 255), 1)
-        hm = cv2.resize(hm,(512,512))
+        hm_n = hm.numpy()[0][0]
+        cv2.imshow('hm', hm_n)
+        # for i in range(len(ind)):
+        #     y = ind[i]//128
+        #     x = ind[i] % 128
+        #     w,h  = wh[i]
+        #     hm = cv2.rectangle(hm, (x-int(w/2), y-int(h/2)), (x+int(w/2), y+int(h/2)), (255, 255, 255), 1)
+        # hm = cv2.resize(hm,(512,512))
+        hm_b = 1 - hm*2 # 在求背景loss时进行截断[-x,1]->[0,1]
+        hm_b = hm_b.numpy()[0][0]
+        print(np.min(hm_b))
+        print(np.max(hm_b))
 
         cv2.imshow('input', input)
-        cv2.imshow('hm', hm)
+        cv2.imshow('hm_b', hm_b)
         cv2.waitKey(0)
 
 
